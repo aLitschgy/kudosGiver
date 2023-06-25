@@ -1,1 +1,1 @@
-"# kudosGiver" 
+# kudosGiver

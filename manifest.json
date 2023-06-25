@@ -1,0 +1,28 @@
+{
+    "manifest_version": 2,
+    "name": "Kudos giver",
+    "version": "1.0",
+    "description": "Permet de donner des kudos sur toutes les activités des abonnements Strava",
+    "icons": {
+        "48": "icons/kudo-48.png",
+        "96": "icons/kudo-96.png"
+    },
+    "permissions": [
+        "activeTab"
+      ],
+    "browser_action": {
+    "default_icon": "icons/kudo-48.png",
+    "default_title": "Kudos giver",
+    "default_popup": "popup/kudos.html"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://*.strava.com/*"
+            ],
+            "js": [
+                "kudos.js"
+            ]
+        }
+    ]
+}

@@ -1,28 +1,21 @@
 {
-    "manifest_version": 2,
-    "name": "Kudos giver",
-    "version": "1.0",
-    "description": "Permet de donner des kudos sur toutes les activités des abonnements Strava",
-    "icons": {
-        "48": "icons/kudo-48.png",
-        "96": "icons/kudo-96.png"
-    },
-    "permissions": [
-        "activeTab"
-      ],
-    "browser_action": {
-    "default_icon": "icons/kudo-48.png",
-    "default_title": "Kudos giver",
-    "default_popup": "popup/kudos.html"
-    },
-    "content_scripts": [
-        {
-            "matches": [
-                "*://*.strava.com/*"
-            ],
-            "js": [
-                "kudos.js"
-            ]
-        }
-    ]
+  "manifest_version": 2,
+  "name": "Kudos Giver",
+  "version": "1.0",
+  "description": "Ma première extension Firefox",
+  "permissions": ["tabs", "storage", "activeTab"],
+  "browser_action": {
+    "default_popup": "popup/kudos.html",
+    "default_icon": {
+      "32": "icons/kudo-32.png",
+      "48": "icons/kudo-48.png",
+      "96": "icons/kudo-96.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content_script/kudos.js"]
+    }
+  ]
 }

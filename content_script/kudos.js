@@ -18,23 +18,14 @@ function giveKudos(boutons, i = 0) {
   }
 }
 
-// Nouvelle fonction pour colorer les liens en vert
-function colorLinksGreen() {
-  const links = document.querySelectorAll("a");
-  console.log(`Trouvé ${links.length} liens à colorer`);
-
-  links.forEach((link) => {
-    link.style.color = "green";
-    link.style.fontWeight = "bold";
-  });
-}
-
 // Écouter les messages du popup
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("Message reçu dans le content script:", message);
 
-  if (message.action === "colorLinksGreen") {
-    colorLinksGreen();
-    sendResponse({ success: true });
+  if (message.action === "getActivities") {
+    const activities = Array.from(
+      document.querySelectorAll('[data-testid="web-feed-entry"]')
+    ).map((a) => a.innerHTML);
+    sendResponse({ activities });
   }
 });

@@ -28,4 +28,10 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     ).map((a) => a.innerHTML);
     sendResponse({ activities });
   }
+
+  if (message.action === "getUsername") {
+    const usernameElement = document.querySelector(".athlete-name");
+    const username = usernameElement ? usernameElement.textContent.trim() : "";
+    sendResponse({ username });
+  }
 });

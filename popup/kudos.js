@@ -2,7 +2,7 @@
 function checkIfOnStrava() {
   browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
     const currentUrl = tabs[0].url;
-    const isOnStrava = currentUrl.includes("strava.com");
+    const isOnStrava = currentUrl.includes("strava.com/dashboard");
 
     if (isOnStrava) {
       showStravaInterface();
@@ -29,8 +29,19 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 const stravaContent = document.querySelector("#strava");
 const otherWebsiteContent = document.querySelector("#not-strava");
 
-function showStravaInterface() {
+async function showStravaInterface() {
   const buttonSend = document.querySelector("#send");
+  buttonSend.addEventListener("click", async () => {
+    buttonSend.disabled = true;
+    buttonSend.textContent = "Envoi en cours...";
+    await sendMessageToContentScript("giveKudos", {
+      onSuccess: (response) => {
+        console.log("Réponse après envoi des kudos:", response);
+        buttonSend.textContent = "Kudos envoyés !";
+        buttonSend.disabled = false;
+      },
+    });
+  });
 
   stravaContent.style.display = "block";
 
@@ -38,64 +49,16 @@ function showStravaInterface() {
     otherWebsiteContent.style.display = "none";
   }
 
-  getActivitiesFromContentScript();
+  let username = await getUsernameFromContentScript();
+  console.log("Nom d'utilisateur récupéré:", username);
 
-  updateElementFromContentScript("getUsername", "#username", {
-    loadingText: "Chargement...",
-    errorText: "Erreur",
-    getValue: (response) => response?.username || "Inconnu",
-  });
-}
+  // Appel initial
+  getActivitiesFromContentScript(username);
 
-// Exemples d'autres fonctions utilisant le mécanisme générique
-function sendKudosToAll() {
-  sendMessageToContentScript("sendKudos", {
-    maxRetries: 3, // Moins de tentatives pour les actions
-    onRetry: (currentRetry, maxRetries) => {
-      console.log(`Tentative d'envoi de kudos ${currentRetry}/${maxRetries}`);
-    },
-    onSuccess: (response) => {
-      console.log("Kudos envoyés avec succès:", response);
-      // Mettre à jour l'interface si nécessaire
-    },
-    onError: (error) => {
-      console.error("Échec de l'envoi des kudos:", error);
-    },
-  });
-}
-
-function getProfileInfo() {
-  sendMessageToContentScript("getProfile", {
-    onRetry: (currentRetry, maxRetries) => {
-      console.log(
-        `Récupération du profil - tentative ${currentRetry}/${maxRetries}`
-      );
-    },
-    onSuccess: (response) => {
-      if (response && response.profile) {
-        console.log("Profil récupéré:", response.profile);
-        // Traiter les données du profil
-      }
-    },
-    onError: (error) => {
-      console.error("Erreur lors de la récupération du profil:", error);
-    },
-  });
-}
-
-function checkConnectionStatus() {
-  return sendMessageToContentScript("ping", {
-    maxRetries: 2,
-    retryDelay: 200,
-    onSuccess: (response) => {
-      console.log("Content script connecté");
-      return true;
-    },
-    onError: (error) => {
-      console.log("Content script non disponible");
-      return false;
-    },
-  });
+  // Appel toutes les 100ms
+  setInterval(() => {
+    getActivitiesFromContentScript(username);
+  }, 100);
 }
 
 function showNonStravaInterface() {
@@ -113,7 +76,9 @@ function showNonStravaInterface() {
     goToStravaLink.addEventListener("click", (e) => {
       e.preventDefault();
       browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-        browser.tabs.update(tabs[0].id, { url: "https://www.strava.com" });
+        browser.tabs.update(tabs[0].id, {
+          url: "https://www.strava.com/dashboard",
+        });
       });
     });
   }
@@ -122,7 +87,7 @@ function showNonStravaInterface() {
 // Fonction générique pour communiquer avec le content script avec retry
 async function sendMessageToContentScript(action, options = {}) {
   const {
-    maxRetries = 5,
+    maxRetries = 50,
     retryDelay = 500,
     onRetry = null,
     onSuccess = null,
@@ -172,50 +137,47 @@ async function sendMessageToContentScript(action, options = {}) {
   }
 }
 
-// Fonction utilitaire simplifiée pour les cas courants
-function updateElementFromContentScript(action, elementSelector, options = {}) {
-  const element = document.querySelector(elementSelector);
-  if (!element) {
-    console.error(`Élément ${elementSelector} non trouvé`);
-    return;
-  }
-
-  const {
-    loadingText = "Chargement...",
-    errorText = "Erreur",
-    getValue = (response) => response,
-    ...restOptions
-  } = options;
-
-  sendMessageToContentScript(action, {
-    ...restOptions,
-    onRetry: (currentRetry, maxRetries) => {
-      element.textContent = loadingText;
-    },
-    onSuccess: (response) => {
-      try {
-        const value = getValue(response);
-        element.textContent = value || "Aucune donnée";
-      } catch (error) {
-        console.error("Erreur lors du traitement de la réponse:", error);
-        element.textContent = errorText;
-      }
-    },
-    onError: (error) => {
-      element.textContent = errorText;
-    },
-  });
-}
-
-function getActivitiesFromContentScript() {
+function getActivitiesFromContentScript(username) {
   const activityCountSpan = document.querySelector("#activity-count");
   sendMessageToContentScript("getActivities", {
     onRetry: (currentRetry, maxRetries) => {
       activityCountSpan.textContent = "Chargement...";
     },
     onSuccess: (response) => {
-      if (response && response.activities) {
-        activityCountSpan.textContent = response.activities.length;
+      console.log("Activités reçues:", response);
+      console.log("Nombre d'activités:", response?.activities?.length);
+
+      // Log détaillé des activités
+      if (response && response.activities && response.activities.length > 0) {
+        if (
+          !(
+            Array.isArray(response.activities) &&
+            response.activities.every(
+              (activity) =>
+                typeof activity === "object" &&
+                activity !== null &&
+                typeof activity.name === "string" &&
+                typeof activity.type === "string"
+            )
+          )
+        ) {
+          console.warn("response.activities n'est pas du type attendu");
+        } else {
+          console.log("Détail des activités:");
+          response.activities.forEach((activity, index) => {
+            console.log(`Activité ${index + 1}:`, activity);
+          });
+          let allActivities = response.activities.filter((activity) => {
+            console.log("Comparaison des noms:", activity.name, username);
+            return activity.name !== username;
+          });
+          let activitiesWithkudosGiven = allActivities.filter((activity) => {
+            return activity.type === "filled_kudos";
+          });
+
+          activityCountSpan.textContent =
+            activitiesWithkudosGiven.length + " / " + allActivities.length;
+        }
       } else {
         activityCountSpan.textContent = "Aucune activité trouvée";
       }
@@ -229,7 +191,7 @@ function getActivitiesFromContentScript() {
 function getUsernameFromContentScript() {
   const usernameSpan = document.querySelector("#username");
 
-  sendMessageToContentScript("getUsername", {
+  return sendMessageToContentScript("getUsername", {
     onRetry: (currentRetry, maxRetries) => {
       usernameSpan.textContent = "Chargement...";
     },
@@ -243,5 +205,15 @@ function getUsernameFromContentScript() {
     onError: (error) => {
       usernameSpan.textContent = "Erreur";
     },
-  });
+  }) // Retourner le résultat de la promesse
+    .then((response) => {
+      return response && response.username ? response.username : null;
+    })
+    .catch((error) => {
+      console.error(
+        "Erreur lors de la récupération du nom d'utilisateur:",
+        error
+      );
+      return null;
+    });
 }

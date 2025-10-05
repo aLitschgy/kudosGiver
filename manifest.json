@@ -14,7 +14,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.strava.com/*"],
+      "matches": ["*://*.strava.com/dashboard*"],
       "js": ["content_script/kudos.js"]
     }
   ]

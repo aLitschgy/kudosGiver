@@ -5,6 +5,8 @@
 //      Donner des kudos : Au chargement de la page / En appuyant sur le bouton
 //      Nombre d'activités à charger : (int) /!\ Peut ralentir le chargement de la page
 
+const APIsendDelay = 1000; // Délai entre chaque envoi de kudos en ms
+
 // Fonction pour récupérer le nom d'utilisateur
 function getUsername() {
   const usernameElement = document.querySelector(".athlete-name");
@@ -59,8 +61,10 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "giveKudos") {
+    //TODO : add a list of selected people as parameter
     const activities = getActivities();
     const username = getUsername();
+    kudosToGive = 0;
 
     activities.forEach((entry, index) => {
       // Récupérer le nom de la personne
@@ -82,14 +86,18 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             setTimeout(() => {
               kudosButton.click();
               console.log(`Kudos donné à ${ownerName}`);
-            }, index * 500); // 500ms de délai entre chaque clic
+            }, kudosToGive * APIsendDelay); // 1s de délai entre chaque clic
+            kudosToGive += 1;
           }
         }
       }
     });
 
-    sendResponse({
-      success: true,
-    });
+    setTimeout(() => {
+      sendResponse({ success: true });
+    }, kudosToGive * APIsendDelay);
+
+    // Indicate asynchronous response
+    return true;
   }
 });

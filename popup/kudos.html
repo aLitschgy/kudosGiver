@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 
 <html>
   <head>
@@ -18,9 +18,16 @@
         </p>
       </div>
       <div id="strava">
-        <p>Bonjour <span id="username"></span></p>
+        <p>Hello <span id="username"></span></p>
         <button id="send">Click to give kudos</button>
-        <p>Kudos donnés : <span id="activity-count">...</span></p>
+        <p>Kudos given : <span id="activity-count">...</span></p>
+        <div class="switch-container">
+          <label class="switch">
+            <input type="checkbox" id="auto-kudos-toggle" />
+            <span class="slider"></span>
+          </label>
+          <span class="switch-label">Enable autokudos</span>
+        </div>
       </div>
     </div>
 

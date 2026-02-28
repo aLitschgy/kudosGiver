@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "Kudos Giver",
-  "version": "1.0",
-  "description": "Ma première extension Firefox",
+  "version": "1.1",
+  "description": "This extension automates the process of giving kudos to your friends on Strava.",
   "permissions": ["tabs", "storage", "activeTab", "webNavigation"],
   "browser_specific_settings": {
     "gecko": {

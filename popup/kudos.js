@@ -1,4 +1,4 @@
-// Fonction pour vérifier si on est sur Strava
+// Function to check if we are on Strava
 function checkIfOnStrava() {
   browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
     const currentUrl = tabs[0].url;
@@ -12,15 +12,15 @@ function checkIfOnStrava() {
   });
 }
 
-// Vérifier immédiatement lors de l'ouverture du popup
+// Check immediately when opening the popup
 checkIfOnStrava();
 
-// Écouter les changements d'onglet
+// Listen to tab changes
 browser.tabs.onActivated.addListener(() => {
   checkIfOnStrava();
 });
 
-// Écouter les changements d'URL dans l'onglet actuel
+// Listen to URL changes in the current tab
 browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url && tab.active) {
     checkIfOnStrava();
@@ -31,13 +31,27 @@ const otherWebsiteContent = document.querySelector("#not-strava");
 
 async function showStravaInterface() {
   const buttonSend = document.querySelector("#send");
+  const autoKudosToggle = document.querySelector("#auto-kudos-toggle");
+
+  // Load toggle state from storage
+  const storageData = await browser.storage.local.get("kudoGiverAutoGive");
+  const isAutoKudosEnabled = storageData.kudoGiverAutoGive || false;
+  autoKudosToggle.checked = isAutoKudosEnabled;
+
+  // Listen to toggle changes
+  autoKudosToggle.addEventListener("change", async () => {
+    const newValue = autoKudosToggle.checked;
+    await browser.storage.local.set({ kudoGiverAutoGive: newValue });
+    console.log("Auto kudos:", newValue ? "enabled" : "disabled");
+  });
+
   buttonSend.addEventListener("click", async () => {
     buttonSend.disabled = true;
-    buttonSend.textContent = "Envoi en cours...";
+    buttonSend.textContent = "Sending...";
     await sendMessageToContentScript("giveKudos", {
       onSuccess: (response) => {
-        console.log("Réponse après envoi des kudos:", response);
-        buttonSend.textContent = "Kudos envoyés !";
+        console.log("Response after sending kudos:", response);
+        buttonSend.textContent = "Kudos sent!";
         buttonSend.disabled = false;
       },
     });
@@ -50,12 +64,12 @@ async function showStravaInterface() {
   }
 
   let username = await getUsernameFromContentScript();
-  console.log("Nom d'utilisateur récupéré:", username);
+  console.log("Username retrieved:", username);
 
-  // Appel initial
+  // Initial call
   getActivitiesFromContentScript(username);
 
-  // Appel toutes les 100ms
+  // Call every 100ms
   setInterval(() => {
     getActivitiesFromContentScript(username);
   }, 100);
@@ -84,7 +98,7 @@ function showNonStravaInterface() {
   }
 }
 
-// Fonction générique pour communiquer avec le content script avec retry
+// Generic function to communicate with the content script with retry
 async function sendMessageToContentScript(action, options = {}) {
   const {
     maxRetries = 50,
@@ -108,10 +122,10 @@ async function sendMessageToContentScript(action, options = {}) {
     return response;
   } catch (error) {
     console.log(
-      `Tentative ${
+      `Attempt ${
         retryCount + 1
-      }/${maxRetries} - Erreur lors de la communication (${action}):`,
-      error
+      }/${maxRetries} - Communication error (${action}):`,
+      error,
     );
 
     if (retryCount < maxRetries) {
@@ -119,16 +133,16 @@ async function sendMessageToContentScript(action, options = {}) {
         onRetry(retryCount + 1, maxRetries);
       }
 
-      // Attendre avant de réessayer
+      // Wait before retrying
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
 
-      // Récursion avec retry count incrémenté
+      // Recursion with incremented retry count
       return sendMessageToContentScript(action, {
         ...options,
         retryCount: retryCount + 1,
       });
     } else {
-      // Toutes les tentatives ont échoué
+      // All attempts failed
       if (onError) {
         onError(error);
       }
@@ -141,13 +155,13 @@ function getActivitiesFromContentScript(username) {
   const activityCountSpan = document.querySelector("#activity-count");
   sendMessageToContentScript("getActivities", {
     onRetry: (currentRetry, maxRetries) => {
-      activityCountSpan.textContent = "Chargement...";
+      activityCountSpan.textContent = "Loading...";
     },
     onSuccess: (response) => {
-      console.log("Activités reçues:", response);
-      console.log("Nombre d'activités:", response?.activities?.length);
+      console.log("Activities received:", response);
+      console.log("Number of activities:", response?.activities?.length);
 
-      // Log détaillé des activités
+      // Detailed activity log
       if (response && response.activities && response.activities.length > 0) {
         if (
           !(
@@ -157,18 +171,18 @@ function getActivitiesFromContentScript(username) {
                 typeof activity === "object" &&
                 activity !== null &&
                 typeof activity.name === "string" &&
-                typeof activity.type === "string"
+                typeof activity.type === "string",
             )
           )
         ) {
-          console.warn("response.activities n'est pas du type attendu");
+          console.warn("response.activities is not of the expected type");
         } else {
-          console.log("Détail des activités:");
+          console.log("Activity details:");
           response.activities.forEach((activity, index) => {
-            console.log(`Activité ${index + 1}:`, activity);
+            console.log(`Activity ${index + 1}:`, activity);
           });
           let allActivities = response.activities.filter((activity) => {
-            console.log("Comparaison des noms:", activity.name, username);
+            console.log("Name comparison:", activity.name, username);
             return activity.name !== username;
           });
           let activitiesWithkudosGiven = allActivities.filter((activity) => {
@@ -179,11 +193,11 @@ function getActivitiesFromContentScript(username) {
             activitiesWithkudosGiven.length + " / " + allActivities.length;
         }
       } else {
-        activityCountSpan.textContent = "Aucune activité trouvée";
+        activityCountSpan.textContent = "No activities found";
       }
     },
     onError: (error) => {
-      activityCountSpan.textContent = "Erreur";
+      activityCountSpan.textContent = "Error";
     },
   });
 }
@@ -193,27 +207,24 @@ function getUsernameFromContentScript() {
 
   return sendMessageToContentScript("getUsername", {
     onRetry: (currentRetry, maxRetries) => {
-      usernameSpan.textContent = "Chargement...";
+      usernameSpan.textContent = "Loading...";
     },
     onSuccess: (response) => {
       if (response && response.username) {
         usernameSpan.textContent = response.username;
       } else {
-        usernameSpan.textContent = "Nom d'utilisateur non trouvé";
+        usernameSpan.textContent = "Username not found";
       }
     },
     onError: (error) => {
-      usernameSpan.textContent = "Erreur";
+      usernameSpan.textContent = "Error";
     },
   }) // Retourner le résultat de la promesse
     .then((response) => {
       return response && response.username ? response.username : null;
     })
     .catch((error) => {
-      console.error(
-        "Erreur lors de la récupération du nom d'utilisateur:",
-        error
-      );
+      console.error("Error retrieving username:", error);
       return null;
     });
 }

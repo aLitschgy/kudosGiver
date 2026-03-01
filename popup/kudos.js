@@ -43,6 +43,13 @@ async function showStravaInterface() {
     const newValue = autoKudosToggle.checked;
     await browser.storage.local.set({ kudoGiverAutoGive: newValue });
     console.log("Auto kudos:", newValue ? "enabled" : "disabled");
+    
+    // Notify content script to check and auto-give kudos if enabled
+    await sendMessageToContentScript("toggleAutoKudos", {
+      onSuccess: (response) => {
+        console.log("Auto-kudos toggled:", response);
+      },
+    });
   });
 
   buttonSend.addEventListener("click", async () => {

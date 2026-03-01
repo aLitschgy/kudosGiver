@@ -158,6 +158,16 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Indicate asynchronous response
     return true;
   }
+
+  if (message.action === "toggleAutoKudos") {
+    // Check and auto-give kudos when toggle is changed from popup
+    checkAndAutoGiveKudos().then(() => {
+      sendResponse({ success: true, message: "Auto-kudos check triggered" });
+    });
+
+    // Indicate asynchronous response
+    return true;
+  }
 });
 
 // Observer to detect new activities

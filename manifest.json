@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Kudos Giver",
-  "version": "1.1",
+  "version": "1.1.2",
   "description": "This extension automates the process of giving kudos to your friends on Strava.",
   "permissions": ["tabs", "storage", "activeTab", "webNavigation"],
   "browser_specific_settings": {

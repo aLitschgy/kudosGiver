@@ -23,6 +23,28 @@ function getActivities() {
   return activities;
 }
 
+function getKudosTargets(entry, username) {
+  const ownerNameElements = Array.from(
+    entry.querySelectorAll('[data-testid="owners-name"]'),
+  );
+  const kudosButtons = Array.from(
+    entry.querySelectorAll('[data-testid="kudos_button"]'),
+  );
+
+  return ownerNameElements
+    .map((ownerNameElement, index) => {
+      const ownerName = ownerNameElement.textContent.trim();
+      const kudosButton = kudosButtons[index];
+
+      if (!ownerName || ownerName === username || !kudosButton) {
+        return null;
+      }
+
+      return { ownerName, kudosButton };
+    })
+    .filter((target) => target !== null);
+}
+
 // Function to automatically give kudos
 async function giveKudosToActivities() {
   if (isGivingKudos) {
@@ -35,31 +57,22 @@ async function giveKudosToActivities() {
   const username = getUsername();
   let kudosToGive = 0;
 
-  activities.forEach((entry, index) => {
-    // Get the person's name
-    const nameElement = entry.querySelector('[data-testid="owners-name"]');
-    const ownerName = nameElement ? nameElement.textContent.trim() : null;
+  activities.forEach((entry) => {
+    getKudosTargets(entry, username).forEach(({ ownerName, kudosButton }) => {
+      // Check if the unfilled_kudos SVG is present (no kudos given yet)
+      const unfilledKudos = kudosButton.querySelector(
+        '[data-testid="unfilled_kudos"]',
+      );
 
-    // Check if the name is different from the username
-    if (ownerName && ownerName !== username) {
-      const kudosButton = entry.querySelector('[data-testid="kudos_button"]');
-
-      if (kudosButton) {
-        // Check if the unfilled_kudos SVG is present (no kudos given yet)
-        const unfilledKudos = kudosButton.querySelector(
-          '[data-testid="unfilled_kudos"]',
-        );
-
-        if (unfilledKudos) {
-          // Click the button with a delay to avoid spam
-          setTimeout(() => {
-            kudosButton.click();
-            console.log(`Kudos given to ${ownerName}`);
-          }, kudosToGive * APIsendDelay);
-          kudosToGive += 1;
-        }
+      if (unfilledKudos) {
+        // Click the button with a delay to avoid spam
+        setTimeout(() => {
+          kudosButton.click();
+          console.log(`Kudos given to ${ownerName}`);
+        }, kudosToGive * APIsendDelay);
+        kudosToGive += 1;
       }
-    }
+    });
   });
 
   // Reset the flag after all kudos have been given
@@ -77,19 +90,12 @@ function hasUnfilledKudos() {
   const username = getUsername();
 
   return activities.some((entry) => {
-    const nameElement = entry.querySelector('[data-testid="owners-name"]');
-    const ownerName = nameElement ? nameElement.textContent.trim() : null;
-
-    if (ownerName && ownerName !== username) {
-      const kudosButton = entry.querySelector('[data-testid="kudos_button"]');
-      if (kudosButton) {
-        const unfilledKudos = kudosButton.querySelector(
-          '[data-testid="unfilled_kudos"]',
-        );
-        return unfilledKudos !== null;
-      }
-    }
-    return false;
+    return getKudosTargets(entry, username).some(({ kudosButton }) => {
+      const unfilledKudos = kudosButton.querySelector(
+        '[data-testid="unfilled_kudos"]',
+      );
+      return unfilledKudos !== null;
+    });
   });
 }
 
@@ -114,35 +120,27 @@ async function checkAndAutoGiveKudos() {
 // Listen to messages from the popup
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "getActivities") {
-    const activities = getActivities()
-      .map((entry) => {
-        // Get the person's name
-        const nameElement = entry.querySelector('[data-testid="owners-name"]');
-        const name = nameElement ? nameElement.textContent.trim() : null;
+    const username = getUsername();
+    const activities = getActivities().flatMap((entry) =>
+      getKudosTargets(entry, username)
+        .map(({ ownerName, kudosButton }) => {
+          const unfilledKudos = kudosButton.querySelector(
+            '[data-testid="unfilled_kudos"]',
+          );
+          const filledKudos = kudosButton.querySelector(
+            '[data-testid="filled_kudos"]',
+          );
 
-        // Determine the kudos type (filled or unfilled)
-        // First look in the SVG inside the kudos button
-        const kudosButton = entry.querySelector('[data-testid="kudos_button"]');
-        const unfilledKudos = kudosButton
-          ? kudosButton.querySelector('[data-testid="unfilled_kudos"]')
-          : null;
-        const filledKudos = kudosButton
-          ? kudosButton.querySelector('[data-testid="filled_kudos"]')
-          : null;
-
-        let type;
-        if (unfilledKudos) {
-          type = "unfilled_kudos";
-        } else if (filledKudos) {
-          type = "filled_kudos";
-        } else {
-          type = null;
-        }
-        if (name && type) {
-          return { name, type };
-        }
-      })
-      .filter((activity) => activity !== undefined);
+          if (unfilledKudos) {
+            return { name: ownerName, type: "unfilled_kudos" };
+          }
+          if (filledKudos) {
+            return { name: ownerName, type: "filled_kudos" };
+          }
+          return null;
+        })
+        .filter((activity) => activity !== null),
+    );
     sendResponse({ activities });
   }
 

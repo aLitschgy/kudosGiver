@@ -10,7 +10,9 @@ let isGivingKudos = false; // Flag to avoid simultaneous executions
 
 // Function to get the username
 function getUsername() {
-  const usernameElement = document.querySelector(".athlete-name");
+  const usernameElement = document.querySelector(
+    '[data-testid="dashboard-athlete-name"]',
+  );
   return usernameElement ? usernameElement.textContent.trim() : "";
 }
 
